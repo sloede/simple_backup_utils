@@ -1,10 +1,28 @@
 #!/bin/bash
 
 DEFAULT_CONFIG_FILE=$HOME/.sburc
-DEFAULT_LOCAL_BACKUP_DIR=$HOME/backups
+DEFAULT_BACKUP_USER=$USER
+DEFAULT_LOCAL_BACKUP_DIR=backups
 
-# Ask user for local backup directory
-echo -n "Where should local backups be stored [$DEFAULT_LOCAL_BACKUP_DIR]? "
+# Backup user
+echo -n "User name for local backups [$DEFAULT_BACKUP_USER]: "
+read backup_user
+if [ -z "$backup_user" ]; then
+  backup_user=$DEFAULT_BACKUP_USER
+fi
+id -un $backup_user >/dev/null 2>&1
+if [ $? -ne 0 ]; then
+  echo "error: user '$backup_user' does not exist" >&2
+  exit 1
+fi
+
+# Local backup directory
+if [ -d "/home/$backup_user" ]; then
+  _default=/home/$backup_user/$DEFAULT_LOCAL_BACKUP_DIR
+else
+  _default=$HOME/$DEFAULT_LOCAL_BACKUP_DIR
+fi
+echo -n "Local backup directory [$_default]: "
 read local_backup_dir
 if [ -z "$local_backup_dir" ]; then
   local_backup_dir=$DEFAULT_LOCAL_BACKUP_DIR
@@ -18,7 +36,10 @@ fi
 
 # Write configuration file
 echo "Writing configuration to '$DEFAULT_CONFIG_FILE'..."
-echo "local_backup_dir = $local_backup_dir" > $DEFAULT_CONFIG_FILE
+cat << EOF > $DEFAULT_CONFIG_FILE
+backup_user = $backup_user
+local_backup_dir = $local_backup_dir
+EOF
 if [ $? -ne 0 ]; then
   echo "error: could not write configuration" >&2
   exit 1
