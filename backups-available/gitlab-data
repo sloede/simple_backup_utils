@@ -1,0 +1,28 @@
+#!/bin/bash
+
+BACKUP_FROM=/var/opt/gitlab/backups
+BACKUP_TO=/home/mic/gitlab.sloede.com/backups
+BACKUP_USER=mic
+BACKUP_LIMIT=30
+
+# BACKUP_SELECTION_TO=/home/ubuntu/gitlab/backups/selected
+# BACKUP_SELECTION_LIMIT=10
+
+# Delete old files
+sudo find $BACKUP_FROM -type f | sort | head -n -$BACKUP_LIMIT | sudo xargs rm -f
+
+# Back up files
+out=$(sudo rsync -riu --delete $BACKUP_FROM/ $BACKUP_TO/)
+
+# Get list of new files
+new_files=$(echo "$out" | grep "f+++++++++" | awk '{print $2}')
+
+# Change owner of new files
+for f in $new_files; do
+  sudo chown $BACKUP_USER:$BACKUP_USER $BACKUP_TO/$f
+done
+
+# Purge selection folder & copy the newest files to it
+# sudo -u $BACKUP_USER rm -f $BACKUP_SELECTION_TO/*
+# sudo find $BACKUP_TO -type f | sort | tail -n $BACKUP_SELECTION_LIMIT | \
+#     sudo -u $BACKUP_USER xargs cp -t $BACKUP_SELECTION_TO

@@ -1,0 +1,11 @@
+#!/bin/bash
+
+USERNAME=mic
+GROUPNAME=mic
+BACKUP_DIR=/home/mic/backups/gitlab/etc
+
+# Back up /etc/gitlab configuration
+fname=$BACKUP_DIR/$(date "+etc_gitlab_%Y%m%d_%H%M%S.tar.bz2")
+tar cjvf $fname -C / etc/gitlab
+chmod og-rwx $fname
+chown ${USERNAME}:${GROUPNAME} $fname
