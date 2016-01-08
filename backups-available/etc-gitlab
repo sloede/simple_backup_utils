@@ -2,7 +2,7 @@
 
 USERNAME=mic
 GROUPNAME=mic
-BACKUP_DIR=/home/mic/backups/gitlab/etc
+BACKUP_DIR=/home/mic/backups/etc-gitlab
 
 # Back up /etc/gitlab configuration
 fname=$BACKUP_DIR/$(date "+etc_gitlab_%Y%m%d_%H%M%S.tar.bz2")
