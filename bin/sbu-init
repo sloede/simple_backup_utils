@@ -26,7 +26,7 @@ fi
 echo -n "Local backup directory [$_default]: "
 read local_backup_dir
 if [ -z "$local_backup_dir" ]; then
-  local_backup_dir=$DEFAULT_LOCAL_BACKUP_DIR
+  local_backup_dir=$_default
 fi
 echo "Creating backup directory '$local_backup_dir'..."
 mkdir -p $local_backup_dir
