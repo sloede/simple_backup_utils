@@ -1,0 +1,36 @@
+#!/usr/bin/env python3
+
+DEFAULT_CONFIG_FILE_NAME = '.sburc'
+
+import argparse
+import configparser
+import os
+import sys
+
+def main():
+    args = parse_arguments()
+    config = configparser.ConfigParser()
+    config.read(args.config)
+    backup_scripts = find_backup_scripts(config['DEFAULT']['backup_script_dir'])
+    print(backup_scripts)
+
+
+def find_backup_scripts(backup_script_dir):
+    rel_paths = os.listdir(backup_script_dir)
+    full_paths = [os.path.join(backup_script_dir, p) for p in rel_paths]
+    return [f for f in full_paths
+            if os.path.isfile(f) and os.access(f, os.X_OK)]
+
+
+def parse_arguments():
+    p = argparse.ArgumentParser(
+            formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+    default_config = os.path.join(os.path.expanduser('~'),
+            DEFAULT_CONFIG_FILE_NAME)
+    p.add_argument('--config', '-c', default=default_config,
+            help='Path to config file.')
+    return p.parse_args()
+
+
+if __name__ == '__main__':
+    sys.exit(main())
