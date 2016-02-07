@@ -5,14 +5,57 @@ DEFAULT_CONFIG_FILE_NAME = '.sburc'
 import argparse
 import configparser
 import os
+import subprocess
 import sys
+import tarfile
+import tempfile
+import time
 
 def main():
+    # Parse command line arguments and read configuration file
     args = parse_arguments()
     config = configparser.ConfigParser()
     config.read(args.config)
-    backup_scripts = find_backup_scripts(config['DEFAULT']['backup_script_dir'])
-    print(backup_scripts)
+
+    # Get list of backup scripts
+    backup_scripts = sorted(
+            find_backup_scripts(config['DEFAULT']['backup_script_dir']))
+
+    # Determine snapshot filename
+    timestamp = time.strftime('%Y%m%d%H%M%S', time.gmtime())
+    snapshot_name = 'sbu_snapshot_' + timestamp
+    snapshot_filename = os.path.join(
+            config['DEFAULT']['local_backup_dir'], snapshot_name + '.tar')
+
+    # Create temporary directory and create snapshot
+    with tempfile.TemporaryDirectory() as temp_dir:
+        # Create snapshot dir
+        snapshot_dir = os.path.join(temp_dir, snapshot_name)
+        os.mkdir(snapshot_dir, mode=0o700)
+
+        # Run backup scripts and store created filenames
+        created_files = []
+        for s in backup_scripts:
+            p = subprocess.Popen([s, snapshot_dir, timestamp],
+                    stdout=subprocess.PIPE, universal_newlines=True)
+            out, _ = p.communicate()
+            created_files.append(out.strip())
+
+        # Create README with manifest information
+        with open(os.path.join(snapshot_dir, 'README'), 'w') as readme:
+            readme.write("timestamp: {}\n".format(timestamp))
+            readme.write("num_files: {}\n".format(len(created_files)))
+            readme.write('\n')
+            for script, filename in zip(backup_scripts, created_files):
+                readme.write("{}: {}\n".format(script, filename))
+
+        # Create snapshopt tarfile
+        with tarfile.TarFile(snapshot_filename, 'w') as tar:
+            tar.add(snapshot_dir, snapshot_name)
+
+    # Return snapshot filename to stdout and quit
+    print(snapshot_filename)
+    return
 
 
 def find_backup_scripts(backup_script_dir):
