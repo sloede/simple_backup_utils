@@ -34,13 +34,19 @@ def main():
         snapshot_dir = os.path.join(temp_dir, snapshot_name)
         os.mkdir(snapshot_dir, mode=0o700)
 
-        # Run backup scripts and store created filenames
+        # Run backup scripts, set file permissions, and store created filenames
         created_files = []
         for s in backup_scripts:
             p = subprocess.Popen([s, snapshot_dir, timestamp],
                     stdout=subprocess.PIPE, universal_newlines=True)
             out, _ = p.communicate()
-            created_files.append(out.strip())
+            filename = out.strip()
+            created_files.append(filename)
+            filename_abs = os.path.join(snapshot_dir, filename)
+            shutil.chown(filename_abs,
+                    config['DEFAULT']['backup_user'],
+                    config['DEFAULT']['backup_user'])
+            os.chmod(filename_abs, 0o600)
 
         # Create README with manifest information
         with open(os.path.join(snapshot_dir, 'README'), 'w') as readme:
