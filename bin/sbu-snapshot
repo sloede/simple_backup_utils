@@ -5,6 +5,7 @@ DEFAULT_CONFIG_FILE_NAME = '.sburc'
 import argparse
 import configparser
 import os
+import shutil
 import subprocess
 import sys
 import tarfile
@@ -52,6 +53,11 @@ def main():
         # Create snapshopt tarfile
         with tarfile.TarFile(snapshot_filename, 'w') as tar:
             tar.add(snapshot_dir, snapshot_name)
+
+    # Set permissions for snapshot file
+    shutil.chown(snapshot_filename,
+            config['DEFAULT']['backup_user'], config['DEFAULT']['backup_user'])
+    os.chmod(snapshot_filename, 0o600)
 
     # Return snapshot filename to stdout and quit
     print(snapshot_filename)
