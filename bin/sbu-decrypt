@@ -1,0 +1,66 @@
+#!/usr/bin/env python3
+
+DEFAULT_CONFIG_DIR = '.sbu'
+DEFAULT_ENCRYPTION_EXTENSION = '.enc'
+
+import argparse
+import configparser
+import os
+import subprocess
+import sys
+
+def main():
+    # Parse command line arguments and read configuration file
+    args = parse_arguments()
+    config = configparser.ConfigParser()
+    config.read(os.path.join(args.config_dir, 'config'))
+
+    # Decrypt file using gpg
+    if os.path.splitext(args.filename)[1] == args.extension:
+        basename = os.path.basename(os.path.splitext(args.filename)[0])
+    else:
+        basename = os.path.basename(args.filename)
+    decrypted_file_name = os.path.normpath(os.path.join(
+            args.output_dir, basename))
+    cmd = ['gpg', '--quiet', '--batch', '--decrypt',
+            '--passphrase-fd', '0',
+            '--output', decrypted_file_name,
+            args.filename]
+    key_file = os.path.join(args.config_dir, 'key')
+    p = subprocess.Popen(cmd, stdin=open(key_file, 'rb'),
+            stdout=subprocess.DEVNULL, universal_newlines=True)
+    p.communicate()
+    if p.returncode != 0:
+        print("error: could not decrypt file", file=sys.stderr)
+        return 1
+
+    # Print name of encrypted file to stdout
+    print(decrypted_file_name)
+
+
+def parse_arguments():
+    p = argparse.ArgumentParser(
+            formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+    default_config = os.path.join(os.path.expanduser('~'),
+            DEFAULT_CONFIG_DIR)
+    p.add_argument('-c', default=default_config, dest='config_dir',
+            help='Path to configuration directory.')
+    p.add_argument('-e', default=DEFAULT_ENCRYPTION_EXTENSION, dest='extension',
+            help='Extension for encrypted file.')
+    p.add_argument('-o', default='.', dest='output_dir',
+            help='Directory where decrypted file will be stored.')
+    p.add_argument('filename', help='Name of file to decrypt.',
+            type=readable_file_arg)
+    return p.parse_args()
+
+
+def readable_file_arg(s):
+    try:
+        open(s, 'rb')
+    except:
+        raise argparse.ArgumentTypeError("'{}' is not a readable file".format(s))
+    return s
+
+
+if __name__ == '__main__':
+    sys.exit(main())
