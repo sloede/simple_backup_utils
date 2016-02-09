@@ -15,4 +15,6 @@ else
 fi
 
 # Back up /etc/gitlab configuration
-tar cjvf $backup_dir/etc_gitlab_${timestamp}.tar.bz2 -C / etc/gitlab
+filename="$backup_dir/etc_gitlab_${timestamp}.tar.bz2"
+tar cjf $filename -C / etc/gitlab
+echo "$filename"
