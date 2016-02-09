@@ -17,7 +17,7 @@ def main():
     # Parse command line arguments and read configuration file
     args = parse_arguments()
     config = configparser.ConfigParser()
-    config.read(os.path.join(args.config, 'config'))
+    config.read(os.path.join(args.config_dir, 'config'))
 
     # Get list of backup scripts
     backup_scripts = sorted(
