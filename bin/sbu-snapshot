@@ -40,9 +40,14 @@ def main():
         file_hashes = []
         for s in backup_scripts:
             p = subprocess.Popen([s, snapshot_dir, timestamp],
-                    stdout=subprocess.PIPE, universal_newlines=True)
+                    stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+                    universal_newlines=True)
             out, _ = p.communicate()
-            filename = out.strip()
+            if p.returncode != 0:
+                print("error: backup script '{}' failed with the following "
+                      "messages:\n".format(s) + out, file=sys.stderr, end='')
+                return 1
+            print("filename: " + filename)
             created_files.append(filename)
             filename_abs = os.path.join(snapshot_dir, filename)
             shutil.chown(filename_abs,
