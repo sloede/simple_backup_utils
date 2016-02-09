@@ -36,7 +36,6 @@ def main():
     print(encrypted_file_name)
 
 
-
 def parse_arguments():
     p = argparse.ArgumentParser(
             formatter_class=argparse.ArgumentDefaultsHelpFormatter)
