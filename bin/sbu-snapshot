@@ -38,16 +38,28 @@ def main():
         # Run backup scripts, set file permissions, and store created filenames
         created_files = []
         file_hashes = []
-        for s in backup_scripts:
-            p = subprocess.Popen([s, snapshot_dir, timestamp],
+        for script in backup_scripts:
+            p = subprocess.Popen([script, snapshot_dir, timestamp],
                     stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
                     universal_newlines=True)
             out, _ = p.communicate()
             if p.returncode != 0:
                 print("error: backup script '{}' failed with the following "
-                      "messages:\n".format(s) + out, file=sys.stderr, end='')
+                      "messages:\n".format(script) + out,
+                      file=sys.stderr, end='')
                 return 1
-            print("filename: " + filename)
+            filename = out.strip()
+            if filename == '':
+                print("error: backup script '{}' did not return a filename"
+                        .format(script) + out, file=sys.stderr)
+                return 1
+            try:
+                open(filename, 'rb')
+            except:
+                print("error: returned filename '{}' from script '{}' does "
+                      "not exist or is not readable".format(filename, script),
+                      file=sys.stderr)
+                return 1
             created_files.append(filename)
             filename_abs = os.path.join(snapshot_dir, filename)
             shutil.chown(filename_abs,
@@ -62,7 +74,8 @@ def main():
             readme.write("num_files: {}\n".format(len(created_files)))
             readme.write('\n')
             for filename, file_hash in zip(created_files, file_hashes):
-                readme.write("{} {}\n".format(filename, file_hash))
+                readme.write("{} {}\n".format(
+                        os.path.basename(filename), file_hash))
 
         # Create snapshot tarfile
         with tarfile.TarFile(snapshot_filename, 'w') as tar:
