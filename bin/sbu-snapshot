@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-DEFAULT_CONFIG_FILE_NAME = '.sburc'
+DEFAULT_CONFIG_DIR = '.sbu'
 
 import argparse
 import configparser
@@ -17,7 +17,7 @@ def main():
     # Parse command line arguments and read configuration file
     args = parse_arguments()
     config = configparser.ConfigParser()
-    config.read(args.config)
+    config.read(os.path.join(args.config, 'config'))
 
     # Get list of backup scripts
     backup_scripts = sorted(
@@ -59,14 +59,14 @@ def main():
             for filename, file_hash in zip(created_files, file_hashes):
                 readme.write("{} {}\n".format(filename, file_hash))
 
-        # Create snapshopt tarfile
+        # Create snapshot tarfile
         with tarfile.TarFile(snapshot_filename, 'w') as tar:
             tar.add(snapshot_dir, snapshot_name)
 
     # Set permissions for snapshot file
     shutil.chown(snapshot_filename,
             config['DEFAULT']['backup_user'], config['DEFAULT']['backup_user'])
-    os.chmod(snapshot_filename, 0o600)
+    os.chmod(snapshot_filename, 0o400)
 
     # Return snapshot filename to stdout and quit
     print(snapshot_filename)
@@ -92,9 +92,9 @@ def parse_arguments():
     p = argparse.ArgumentParser(
             formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     default_config = os.path.join(os.path.expanduser('~'),
-            DEFAULT_CONFIG_FILE_NAME)
-    p.add_argument('--config', '-c', default=default_config,
-            help='Path to config file.')
+            DEFAULT_CONFIG_DIR)
+    p.add_argument('-c', default=default_config, dest='config_dir',
+            help='Path to configuration directory.')
     return p.parse_args()
 
 
