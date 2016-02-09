@@ -14,7 +14,15 @@ else
   timestamp="$2"
 fi
 
-# Back up /etc/gitlab configuration
+# Create backup
 filename="$backup_dir/etc_gitlab_${timestamp}.tar.bz2"
 tar cjf $filename -C / etc/gitlab
-echo "$filename"
+
+# Handle errors and return filename upon success
+returncode=$?
+if [ $returncode -ne 0 ]; then
+  echo "error: could not create backup" >&2
+  exit 1
+else
+  echo "$filename"
+fi

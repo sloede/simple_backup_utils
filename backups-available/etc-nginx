@@ -1,11 +1,28 @@
 #!/bin/bash
 
-USERNAME=mic
-GROUPNAME=mic
-BACKUP_DIR=/home/mic/backups/nginx
+# Get backup directory
+if [ -z "$1" ]; then
+  backup_dir=.
+else
+  backup_dir="$1"
+fi
 
-# Back up /etc/gitlab configuration
-fname=$BACKUP_DIR/$(date "+etc_nginx_%Y%m%d_%H%M%S.tar.bz2")
-tar cjvf $fname -C / etc/gitlab
-chmod og-rwx $fname
-chown ${USERNAME}:${GROUPNAME} $fname
+# Get timestamp
+if [ -z "$2" ]; then
+  timestamp=$(date -u "+%Y%m%d%H%M%S")
+else
+  timestamp="$2"
+fi
+
+# Create backup
+filename="$backup_dir/etc_nginx_${timestamp}.tar.bz2"
+tar cjf $filename -C / etc/nginx
+
+# Handle errors and return filename upon success
+returncode=$?
+if [ $returncode -ne 0 ]; then
+  echo "error: could not create backup" >&2
+  exit 1
+else
+  echo "$filename"
+fi
