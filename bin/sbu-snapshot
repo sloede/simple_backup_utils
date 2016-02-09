@@ -4,6 +4,7 @@ DEFAULT_CONFIG_FILE_NAME = '.sburc'
 
 import argparse
 import configparser
+import hashlib
 import os
 import shutil
 import subprocess
@@ -36,6 +37,7 @@ def main():
 
         # Run backup scripts, set file permissions, and store created filenames
         created_files = []
+        file_hashes = []
         for s in backup_scripts:
             p = subprocess.Popen([s, snapshot_dir, timestamp],
                     stdout=subprocess.PIPE, universal_newlines=True)
@@ -47,14 +49,15 @@ def main():
                     config['DEFAULT']['backup_user'],
                     config['DEFAULT']['backup_user'])
             os.chmod(filename_abs, 0o600)
+            file_hashes.append(hash_file(filename_abs))
 
         # Create README with manifest information
         with open(os.path.join(snapshot_dir, 'README'), 'w') as readme:
             readme.write("timestamp: {}\n".format(timestamp))
             readme.write("num_files: {}\n".format(len(created_files)))
             readme.write('\n')
-            for script, filename in zip(backup_scripts, created_files):
-                readme.write("{}: {}\n".format(script, filename))
+            for filename, file_hash in zip(created_files, file_hashes):
+                readme.write("{} {}\n".format(filename, file_hash))
 
         # Create snapshopt tarfile
         with tarfile.TarFile(snapshot_filename, 'w') as tar:
@@ -68,6 +71,14 @@ def main():
     # Return snapshot filename to stdout and quit
     print(snapshot_filename)
     return
+
+
+def hash_file(filename, algorithm='sha256', chunk_size=65536):
+    h = hashlib.new(algorithm)
+    with open(filename, 'rb') as f:
+        for chunk in iter(lambda: f.read(chunk_size), b''):
+            h.update(chunk)
+    return h.hexdigest()
 
 
 def find_backup_scripts(backup_script_dir):
