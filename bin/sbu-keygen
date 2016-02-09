@@ -1,0 +1,47 @@
+#!/usr/bin/env python3
+
+DEFAULT_KEY_LENGTH = 64
+
+import argparse
+import random
+import string
+import sys
+
+
+def main():
+    # Parse arguments
+    p = argparse.ArgumentParser(
+            description=('Generate a secure key of length LENGTH, '
+                         'using only printable ASCII characters '
+                         '(excluding whitespace).'))
+    p.add_argument('length', type=positive_integer_arg, nargs='?',
+                   default=DEFAULT_KEY_LENGTH,
+                   help='Length of generated key.')
+    args = p.parse_args()
+
+    # Generate key
+    choice = string.digits + string.ascii_letters + string.punctuation
+    key = ''.join(
+            random.SystemRandom().choice(choice) for _ in range(args.length))
+
+    print(key)
+    return 0
+
+
+def positive_integer_arg(s):
+    # Check for integer
+    try:
+        value = int(s)
+    except ValueError:
+        raise argparse.ArgumentTypeError("'{}' is not an integer".format(s))
+
+    # Check for positive value
+    if value <= 0:
+        raise argparse.ArgumentTypeError(
+                "'{}' is not a positive integer".format(value))
+
+    return value
+
+
+if __name__ == '__main__':
+    sys.exit(main())
