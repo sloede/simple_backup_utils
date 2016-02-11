@@ -1,28 +1,61 @@
-#!/bin/bash
+#!/usr/bin/env python3
 
-BACKUP_FROM=/var/opt/gitlab/backups
-BACKUP_TO=/home/mic/gitlab.sloede.com/backups/gitlab-data
-BACKUP_USER=mic
-BACKUP_LIMIT=30
+GITLAB_BACKUP_DIR = '/var/opt/gitlab/backups'
+BACKUP_FILE_SUFFIX = '_gitlab_backup.tar'
+MAX_TIME_DIFF = 120
+GITLAB_RAKE = '/opt/gitlab/bin/gitlab-rake'
 
-# BACKUP_SELECTION_TO=/home/ubuntu/gitlab/backups/selected
-# BACKUP_SELECTION_LIMIT=10
+import os
+import shutil
+import subprocess
+import sys
+import time
 
-# Delete old files
-# sudo find $BACKUP_FROM -type f | sort | head -n -$BACKUP_LIMIT | sudo xargs rm -f
 
-# Back up files
-out=$(sudo rsync -riu --delete $BACKUP_FROM/ $BACKUP_TO/)
+def main():
+    # Get backup directory
+    if len(sys.argv) > 1:
+        backup_dir = sys.argv[1]
+    else:
+        backup_dir = '.'
 
-# Get list of new files
-new_files=$(echo "$out" | grep "f+++++++++" | awk '{print $2}')
+    # Get timestamp
+    if len(sys.argv) > 2:
+        timestamp = sys.argv[2]
+    else:
+        timestamp = time.strftime('%Y%m%d%H%M%S', time.gmtime())
 
-# Change owner of new files
-for f in $new_files; do
-  sudo chown $BACKUP_USER:$BACKUP_USER $BACKUP_TO/$f
-done
+    # Create backup
+    p = subprocess.Popen([GITLAB_RAKE, 'gitlab:backup:create'],
+            stdout=subprocess.DEVNULL)
+    p.communicate()
+    if p.returncode != 0:
+        print("error: could not create gitlab backup")
+        return 1
 
-# Purge selection folder & copy the newest files to it
-# sudo -u $BACKUP_USER rm -f $BACKUP_SELECTION_TO/*
-# sudo find $BACKUP_TO -type f | sort | tail -n $BACKUP_SELECTION_LIMIT | \
-#     sudo -u $BACKUP_USER xargs cp -t $BACKUP_SELECTION_TO
+    # Get filename of latest backups
+    backups = [os.path.join(GITLAB_BACKUP_DIR, f) for f
+            in os.listdir(GITLAB_BACKUP_DIR) if f.endswith(BACKUP_FILE_SUFFIX)]
+    if len(backups) == 0:
+        print("error: no backups found", file=sys.stderr)
+        return 1
+    latest_backup = max(backups, key=os.path.getctime)
+
+    # Sanity check of timestamp
+    file_timestamp = int(
+            os.path.basename(latest_backup)[:-len(BACKUP_FILE_SUFFIX)])
+    time_diff = abs(file_timestamp - time.time())
+    if time_diff > MAX_TIME_DIFF:
+        print("error: it seems like no new backup was created (creation time "
+              "of newest backup was {} seconds ago)".format(int(time_diff)),
+              file=sys.stderr)
+        return 1
+
+    # Move created backup to final backup directory and inform user
+    shutil.move(latest_backup, backup_dir)
+    print(os.path.abspath(
+            os.path.join(backup_dir, os.path.basename(latest_backup))))
+
+
+if __name__ == '__main__':
+    sys.exit(main())
