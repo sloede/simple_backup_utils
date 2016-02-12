@@ -92,7 +92,7 @@ def main():
 
 
 def hash_file(filename, algorithm=hashlib.sha256, chunk_size=65536):
-    h = hashlib.algorithm()
+    h = algorithm()
     with open(filename, 'rb') as f:
         for chunk in iter(lambda: f.read(chunk_size), b''):
             h.update(chunk)
