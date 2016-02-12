@@ -1,0 +1,56 @@
+#!/usr/bin/env python3
+
+DEFAULT_CONFIG_DIR = '.sbu'
+
+import argparse
+import boto3
+import configparser
+import os
+import pprint
+import sys
+
+
+def main():
+    # Parse command line arguments and read configuration file
+    args = parse_arguments()
+    config = configparser.ConfigParser()
+    config.read(os.path.join(args.config_dir, 'config'))
+
+    # Read AWS credentials file
+    aws_credentials = configparser.ConfigParser()
+    aws_credentials.read(config['default']['aws_credentials_file']) 
+
+    # Create boto3 client for AWS Glacier
+    glacier = boto3.client(
+            'glacier',
+            aws_access_key_id=aws_credentials['default']['aws_access_key_id'],
+            aws_secret_access_key=aws_credentials['default']['aws_secret_access_key'])
+
+    # If filename is None, just show existing vaults
+    response = glacier.describe_vault(vaultName=config['default']['aws_vault_name'])
+    pprint.pprint(response)
+
+
+def parse_arguments():
+    p = argparse.ArgumentParser(
+            formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+    default_config = os.path.join(os.path.expanduser('~'),
+            DEFAULT_CONFIG_DIR)
+    p.add_argument('-c', default=default_config, dest='config_dir',
+            help='Path to configuration directory.')
+    p.add_argument('filename', type=readable_file_arg, nargs='?',
+            help='File to upload for long-term storage.')
+    return p.parse_args()
+
+
+def readable_file_arg(s):
+    try:
+        open(s, 'rb')
+    except:
+        raise argparse.ArgumentTypeError(
+                "'{}' is not a readable file".format(s))
+    return s
+
+
+if __name__ == '__main__':
+    sys.exit(main())
