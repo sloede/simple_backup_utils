@@ -5,6 +5,7 @@ DEFAULT_CONFIG_DIR = '.sbu'
 import argparse
 import boto3
 import configparser
+import hashlib
 import os
 import pprint
 import sys
@@ -18,17 +19,34 @@ def main():
 
     # Read AWS credentials file
     aws_credentials = configparser.ConfigParser()
-    aws_credentials.read(config['default']['aws_credentials_file']) 
+    aws_credentials.read(config['DEFAULT']['aws_credentials_file']) 
 
     # Create boto3 client for AWS Glacier
     glacier = boto3.client(
             'glacier',
-            aws_access_key_id=aws_credentials['default']['aws_access_key_id'],
-            aws_secret_access_key=aws_credentials['default']['aws_secret_access_key'])
+            aws_access_key_id=aws_credentials['DEFAULT']['aws_access_key_id'],
+            aws_secret_access_key=aws_credentials['DEFAULT']['aws_secret_access_key'])
 
-    # If filename is None, just show existing vaults
-    response = glacier.describe_vault(vaultName=config['default']['aws_vault_name'])
-    pprint.pprint(response)
+    # Get vault information
+    vault_info = glacier.describe_vault(
+            vaultName=config['DEFAULT']['aws_vault_name'])
+
+    # If filename is None, just show vault information
+    if args.filename is None:
+        pprint.pprint(vault_info)
+        return 0
+
+    # Calculate tree hash of file
+    tree_hash = tree_hash_file(args.filename)
+
+    # Upload archive to glacier vault
+    archive_info = glacier.upload_archive(
+            vaultName=config['DEFAULT']['aws_vault_name'],
+            archiveDescription=basename,
+            body=open(args.filename, 'rb').read())
+
+    # Print archive information
+    pprint.pprint(archive_info)
 
 
 def parse_arguments():
@@ -50,6 +68,33 @@ def readable_file_arg(s):
         raise argparse.ArgumentTypeError(
                 "'{}' is not a readable file".format(s))
     return s
+
+
+def tree_hash_file(filename):
+    # File should be hashed in 1 MiB chunks
+    chunk_size = 1024 * 1024
+
+    # Create leave nodes by hashing the file
+    with open(filename, 'rb') as f:
+        hashes = [hashlib.sha256(chunk)
+                for chunk in iter(lambda: f.read(chunk_size), b'')]
+
+    # Recursively move up the tree by hashing consecutive hashes
+    while True:
+        # Temporarily store last hash if number of hashes is odd
+        last = hashes[-1] if len(hashes) % 2 == 1 else None
+
+        # Calculate digest of consecutive hashes
+        hashes = [hashlib.sha256(h1.digest() + h2.digest())
+                for h1, h2 in zip(hashes[::2], hashes[1::2])]
+
+        # Append stored hash if existing
+        if last is not None:
+            hashes.append(last)
+
+        # Return hex digest if the root of the tree is reached
+        if len(hashes) == 1:
+            return hashes[0].hexdigest()
 
 
 if __name__ == '__main__':
