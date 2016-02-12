@@ -92,7 +92,7 @@ fi
 # Write configuration file
 echo "Writing configuration to '$CONFIG_DIR/config'..."
 cat << EOF > $CONFIG_DIR/config
-[default]
+[DEFAULT]
 backup_user = $backup_user
 local_backup_dir = $local_backup_dir
 backup_script_dir = $backup_script_dir
