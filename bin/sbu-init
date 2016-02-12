@@ -68,6 +68,17 @@ if [ ! -f "$aws_credentials_file" ]; then
 fi
 
 ################################################################################
+# AWS credentials file
+################################################################################
+while true; do
+  echo -n "AWS glacier vault name: "
+  read aws_vault_name
+  if [ -n "$aws_vault_name" ]; then
+    break
+  fi
+done
+
+################################################################################
 # Create configuration files
 ################################################################################
 # Create folder for configuration files
@@ -86,6 +97,7 @@ backup_user = $backup_user
 local_backup_dir = $local_backup_dir
 backup_script_dir = $backup_script_dir
 aws_credentials_file = $aws_credentials_file
+aws_vault_name = $aws_vault_name
 EOF
 if [ $? -ne 0 ]; then
   echo "error: could not write configuration" >&2
