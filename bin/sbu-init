@@ -5,8 +5,11 @@ ENCRYPTION_KEY_LENGTH=128
 DEFAULT_BACKUP_USER=$USER
 DEFAULT_LOCAL_BACKUP_DIR=backups
 DEFAULT_BACKUP_SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && cd .. && pwd )/backups-enabled"
+DEFAULT_AWS_CREDENTIALS_FILE=$HOME/.aws/credentials
 
+################################################################################
 # Backup user
+################################################################################
 echo -n "User name for local backups [$DEFAULT_BACKUP_USER]: "
 read backup_user
 if [ -z "$backup_user" ]; then
@@ -18,7 +21,9 @@ if [ $? -ne 0 ]; then
   exit 1
 fi
 
+################################################################################
 # Local backup directory
+################################################################################
 if [ -d "/home/$backup_user" ]; then
   _default=/home/$backup_user/$DEFAULT_LOCAL_BACKUP_DIR
 else
@@ -36,7 +41,9 @@ if [ $? -ne 0 ]; then
   exit 1
 fi
 
+################################################################################
 # Directory with backup scripts to run
+################################################################################
 echo -n "Directory with backup scripts to run [$DEFAULT_BACKUP_SCRIPT_DIR]: "
 read backup_script_dir
 if [ -z "$backup_script_dir" ]; then
@@ -47,6 +54,22 @@ if [ ! -d "$backup_script_dir" ]; then
   exit 1
 fi
 
+################################################################################
+# AWS credentials file
+################################################################################
+echo -n "Path to AWS credentials file [$DEFAULT_AWS_CREDENTIALS_FILE]: "
+read aws_credentials_file
+if [ -z "$aws_credentials_file" ]; then
+  aws_credentials_file=$DEFAULT_AWS_CREDENTIALS_FILE
+fi
+if [ ! -f "$aws_credentials_file" ]; then
+  echo "error: file '$aws_credentials_file' does not exist" >&2
+  exit 1
+fi
+
+################################################################################
+# Create configuration files
+################################################################################
 # Create folder for configuration files
 echo "Creating directory for configuration files '$CONFIG_DIR'..."
 mkdir -p $CONFIG_DIR
@@ -58,10 +81,11 @@ fi
 # Write configuration file
 echo "Writing configuration to '$CONFIG_DIR/config'..."
 cat << EOF > $CONFIG_DIR/config
-[DEFAULT]
+[default]
 backup_user = $backup_user
 local_backup_dir = $local_backup_dir
 backup_script_dir = $backup_script_dir
+aws_credentials_file = $aws_credentials_file
 EOF
 if [ $? -ne 0 ]; then
   echo "error: could not write configuration" >&2
