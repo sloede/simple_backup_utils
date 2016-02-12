@@ -56,7 +56,8 @@ def readable_file_arg(s):
     try:
         open(s, 'rb')
     except:
-        raise argparse.ArgumentTypeError("'{}' is not a readable file".format(s))
+        raise argparse.ArgumentTypeError(
+                "'{}' is not a readable file".format(s))
     return s
 
 
