@@ -24,8 +24,8 @@ def main():
     # Create boto3 client for AWS Glacier
     glacier = boto3.client(
             'glacier',
-            aws_access_key_id=aws_credentials['DEFAULT']['aws_access_key_id'],
-            aws_secret_access_key=aws_credentials['DEFAULT']['aws_secret_access_key'])
+            aws_access_key_id=aws_credentials['default']['aws_access_key_id'],
+            aws_secret_access_key=aws_credentials['default']['aws_secret_access_key'])
 
     # Get vault information
     vault_info = glacier.describe_vault(
