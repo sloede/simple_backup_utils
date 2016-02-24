@@ -3,6 +3,7 @@
 DEFAULT_CONFIG_DIR = '.sbu'
 
 import argparse
+import binascii
 import boto3
 import configparser
 import hashlib
@@ -19,7 +20,7 @@ def main():
 
     # Read AWS credentials file
     aws_credentials = configparser.ConfigParser()
-    aws_credentials.read(config['DEFAULT']['aws_credentials_file']) 
+    aws_credentials.read(config['DEFAULT']['aws_credentials_file'])
 
     # Create boto3 client for AWS Glacier
     glacier = boto3.client(
@@ -76,16 +77,34 @@ def tree_hash_file(filename):
 
     # Create leave nodes by hashing the file
     with open(filename, 'rb') as f:
-        hashes = [hashlib.sha256(chunk)
+        hashes = [hashlib.sha256(chunk).digest()
                 for chunk in iter(lambda: f.read(chunk_size), b'')]
 
+    # Create tree hash from hashes and return
+    return tree_hash_hashes(hashes)
+
+
+def tree_hash_bytes(b):
+    # File should be hashed in 1 MiB chunks
+    chunk_size = 1024 * 1024
+
+    # Create leave nodes by hashing the byte sequence
+    no_chunks = len(b) // chunk_size if len(b) % chunk_size == 0 else len(b) // chunk_size + 1
+    hashes = [hashlib.sha256(b[c * chunk_size:(c + 1) * chunk_size]).digest()
+            for c in range(no_chunks)]
+
+    # Create tree hash from hashes and return
+    return tree_hash_hashes(hashes)
+
+
+def tree_hash_hashes(hashes):
     # Recursively move up the tree by hashing consecutive hashes
     while True:
         # Temporarily store last hash if number of hashes is odd
         last = hashes[-1] if len(hashes) % 2 == 1 else None
 
         # Calculate digest of consecutive hashes
-        hashes = [hashlib.sha256(h1.digest() + h2.digest())
+        hashes = [hashlib.sha256(h1 + h2).digest()
                 for h1, h2 in zip(hashes[::2], hashes[1::2])]
 
         # Append stored hash if existing
@@ -94,7 +113,7 @@ def tree_hash_file(filename):
 
         # Return hex digest if the root of the tree is reached
         if len(hashes) == 1:
-            return hashes[0].hexdigest()
+            return binascii.hexlify(hashes[0]).decode('ascii')
 
 
 if __name__ == '__main__':
