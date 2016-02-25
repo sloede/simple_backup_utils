@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 DEFAULT_CONFIG_DIR = '.sbu'
+UPLOAD_PART_SIZE_MB = 8
 
 import argparse
 import binascii
@@ -37,17 +38,54 @@ def main():
         pprint.pprint(vault_info)
         return 0
 
-    # Calculate tree hash of file
-    tree_hash = tree_hash_file(args.filename)
-
-    # Upload archive to glacier vault
-    archive_info = glacier.upload_archive(
-            vaultName=config['DEFAULT']['aws_vault_name'],
-            archiveDescription=basename,
-            body=open(args.filename, 'rb').read())
+    # Upload archive
+    archive_info = upload_archive(
+            args.filename,
+            config['DEFAULT']['aws_vault_name'],
+            glacier)
 
     # Print archive information
     pprint.pprint(archive_info)
+
+
+def upload_archive(filename, vault, glacier_client,
+        part_size=UPLOAD_PART_SIZE_MB*1024*1024):
+    # Initiate multipart upload
+    upload_info = glacier_client.initiate_multipart_upload(
+            vaultName=vault,
+            archiveDescription=os.path.basename(filename),
+            partSize=str(part_size))
+    pprint.pprint(upload_info)
+
+    # Upload file in parts
+    file_size = 0
+    hashes = []
+    with open(filename, 'rb') as f:
+        for part in iter(lambda: f.read(part_size), b''):
+            # Get tree hash
+            tree_hash = tree_hash_bytes(part)
+
+            # Upload part
+            part_info = glacier_client.upload_multipart_part(
+                    vaultName=vault,
+                    uploadId=upload_info['uploadId'],
+                    checksum=bin_to_hex(tree_hash),
+                    range="bytes {}-{}/*".format(file_size, file_size + len(part) - 1),
+                    body=part)
+            pprint.pprint(part_info)
+
+            # Update file size and hash list
+            file_size = file_size + len(part)
+            hashes.append(tree_hash)
+
+    # Finalize upload
+    archive_info = glacier_client.complete_multipart_upload(
+            vaultName=vault,
+            uploadId=upload_info['uploadId'],
+            archiveSize=file_size,
+            checksum=bin_to_hex(tree_hash_hashes(hashes)))
+
+    return archive_info
 
 
 def parse_arguments():
@@ -113,7 +151,11 @@ def tree_hash_hashes(hashes):
 
         # Return hex digest if the root of the tree is reached
         if len(hashes) == 1:
-            return binascii.hexlify(hashes[0]).decode('ascii')
+            return hashes[0]
+
+
+def bin_to_hex(h):
+    return binascii.hexlify(h).decode('ascii')
 
 
 if __name__ == '__main__':
