@@ -107,7 +107,18 @@ fi
 # Store key
 keyfile="$CONFIG_DIR/key"
 echo "Generating encryption key and storing it to '$keyfile'..."
-# Create key file and allow read/write only from user
+# Create key file and allow reading only from user
+if [ -f "$keyfile" ]; then
+  while true; do
+    echo -n "Key file already exists. Overwrite? (y/n): "
+    read overwrite
+    if [ "$overwrite" = "y" ]; then
+      break
+    elif [ "$overwrite" = "n" ]; then
+      exit 0
+    fi
+  done
+fi
 touch $keyfile
 if [ $? -ne 0 ]; then
   echo "error: could not create key file" >&2
