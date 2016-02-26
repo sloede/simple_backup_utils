@@ -1,0 +1,51 @@
+#!/usr/bin/env python3
+
+DEFAULT_CONFIG_DIR = '.sbu'
+
+import argparse
+import configparser
+import json
+import os
+import sys
+
+def main():
+    # Parse command line arguments and read configuration file
+    args = parse_arguments()
+    config = configparser.ConfigParser()
+    config.read(os.path.join(args.config_dir, 'config'))
+
+    # Read current database
+    db_file = os.path.join(args.config_dir, 'backups.json')
+    with open(db_file, 'rt') as f:
+        db = json.load(f)
+
+    # Append new record
+    db.append(json.load(args.record_file))
+
+    # Store database
+    with open(db_file, 'wt') as f:
+        json.dump(db, f, indent=2, sort_keys=True)
+
+    # Print number of records currently in the database
+    print(len(db))
+
+
+def parse_arguments():
+    p = argparse.ArgumentParser(
+            formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+    default_config = os.path.join(os.path.expanduser('~'),
+            DEFAULT_CONFIG_DIR)
+    p.add_argument('-c', default=default_config, dest='config_dir',
+            help='Path to configuration directory.')
+    p.add_argument(
+            'record_file',
+            help=('Name of file with record to add '
+                  '(if omitted or -, data is read from stdin.'),
+            type=argparse.FileType('r'),
+            nargs='?',
+            default='-')
+    return p.parse_args()
+
+
+if __name__ == '__main__':
+    sys.exit(main())
