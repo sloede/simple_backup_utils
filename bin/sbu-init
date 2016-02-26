@@ -104,17 +104,41 @@ if [ $? -ne 0 ]; then
   exit 1
 fi
 
+# Initialize backup database
+dbfile="$CONFIG_DIR/backups.json"
+echo "Initializing backup database in '$dbfile'..."
+overwrite=y
+if [ -f "$dbfile" ]; then
+  while true; do
+    echo -n "Database file already exists. Overwrite (y/n)? [n]: "
+    read overwrite
+    if [ "$overwrite" = "y" ]; then
+      break
+    elif [ "$overwrite" = "n" ] || [ -z "$overwrite" ]; then
+      overwrite=n
+      break
+    fi
+  done
+fi
+if [ "$overwrite" = "y" ]; then
+  echo "[]" > $dbfile
+  if [ $? -ne 0 ]; then
+    echo "error: could not initialize database file" >&2
+    exit 1
+  fi
+fi
+
 # Store key
 keyfile="$CONFIG_DIR/key"
 echo "Generating encryption key and storing it to '$keyfile'..."
 # Create key file and allow reading only from user
 if [ -f "$keyfile" ]; then
   while true; do
-    echo -n "Key file already exists. Overwrite? (y/n): "
+    echo -n "Key file already exists. Overwrite (y/n)? [n]: "
     read overwrite
     if [ "$overwrite" = "y" ]; then
       break
-    elif [ "$overwrite" = "n" ]; then
+    elif [ "$overwrite" = "n" ] || [ -z "$overwrite" ]; then
       exit 0
     fi
   done
