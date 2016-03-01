@@ -19,8 +19,15 @@ def main():
     with open(db_file, 'rt') as f:
         db = json.load(f)
 
-    # Append new record
-    db.append(json.load(args.record_file))
+    # Append new record(s)
+    for i, line in enumerate(args.record_file):
+        try:
+            record = json.loads(line)
+        except ValueError:
+            print("error: line {} does not contain valid JSON".format(i + 1),
+                    file=sys.stderr)
+        else:
+            db.append(record)
 
     # Store database
     with open(db_file, 'wt') as f:
