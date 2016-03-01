@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 DEFAULT_CONFIG_DIR = '.sbu'
+CONFIG_DIR_VAR = 'SBU_CONFIG_DIR'
 DEFAULT_ENCRYPTION_EXTENSION = '.enc'
 CIPHER_ALGORITHM = 'aes256'
 
@@ -46,8 +47,8 @@ def main():
 def parse_arguments():
     p = argparse.ArgumentParser(
             formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-    default_config = os.path.join(os.path.expanduser('~'),
-            DEFAULT_CONFIG_DIR)
+    default_config = os.environ.get(CONFIG_DIR_VAR,
+            os.path.join(os.path.expanduser('~'), DEFAULT_CONFIG_DIR))
     p.add_argument('-c', default=default_config, dest='config_dir',
             help='Path to configuration directory.')
     p.add_argument('-e', default=DEFAULT_ENCRYPTION_EXTENSION, dest='extension',
