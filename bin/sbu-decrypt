@@ -16,26 +16,32 @@ def main():
     config.read(os.path.join(args.config_dir, 'config'))
 
     # Decrypt file using gpg
-    if os.path.splitext(args.filename)[1] == args.extension:
-        basename = os.path.basename(os.path.splitext(args.filename)[0])
-    else:
-        basename = os.path.basename(args.filename)
-    decrypted_file_name = os.path.abspath(os.path.join(
-            args.output_dir, basename))
-    cmd = ['gpg', '--quiet', '--batch', '--decrypt',
-            '--passphrase-fd', '0',
-            '--output', decrypted_file_name,
-            args.filename]
-    key_file = os.path.join(args.config_dir, 'key')
-    p = subprocess.Popen(cmd, stdin=open(key_file, 'rb'),
-            stdout=subprocess.DEVNULL, universal_newlines=True)
-    p.communicate()
-    if p.returncode != 0:
-        print("error: could not decrypt file", file=sys.stderr)
-        return 1
+    for filename in args.filename:
+        # Generate output name
+        if os.path.splitext(filename)[1] == args.extension:
+            basename = os.path.basename(os.path.splitext(filename)[0])
+        else:
+            basename = os.path.basename(filename)
+        decrypted_file_name = os.path.abspath(os.path.join(
+                args.output_dir, basename))
 
-    # Print name of encrypted file to stdout
-    print(decrypted_file_name)
+        # Decrypt file
+        cmd = ['gpg', '--quiet', '--batch', '--decrypt',
+                '--passphrase-fd', '0',
+                '--output', decrypted_file_name,
+                filename]
+        key_file = os.path.join(args.config_dir, 'key')
+        p = subprocess.Popen(cmd, stdin=open(key_file, 'rb'),
+                stdout=subprocess.DEVNULL, universal_newlines=True)
+        p.communicate()
+
+        # Handle errors
+        if p.returncode != 0:
+            print("error: could not decrypt file", file=sys.stderr)
+            return 1
+
+        # Print name of decrypted file to stdout
+        print(decrypted_file_name)
 
 
 def parse_arguments():
@@ -46,11 +52,11 @@ def parse_arguments():
     p.add_argument('-c', default=default_config, dest='config_dir',
             help='Path to configuration directory.')
     p.add_argument('-e', default=DEFAULT_ENCRYPTION_EXTENSION, dest='extension',
-            help='Extension for encrypted file.')
+            help='Extension for encrypted file(s).')
     p.add_argument('-o', default='.', dest='output_dir',
-            help='Directory where decrypted file will be stored.')
+            help='Directory where decrypted file(s) will be stored.')
     p.add_argument('filename', help='Name of file to decrypt.',
-            type=readable_file_arg)
+            type=readable_file_arg, nargs='+')
     return p.parse_args()
 
 

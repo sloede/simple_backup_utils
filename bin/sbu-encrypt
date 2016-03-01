@@ -16,24 +16,31 @@ def main():
     config = configparser.ConfigParser()
     config.read(os.path.join(args.config_dir, 'config'))
 
-    # Encrypt file using gpg
-    encrypted_file_name = os.path.abspath(os.path.join(
-            args.output_dir, os.path.basename(args.filename) + args.extension))
-    cmd = ['gpg', '--quiet', '--batch', '--symmetric',
-            '--cipher-algo', CIPHER_ALGORITHM,
-            '--passphrase-fd', '0',
-            '--output', encrypted_file_name,
-            args.filename]
-    key_file = os.path.join(args.config_dir, 'key')
-    p = subprocess.Popen(cmd, stdin=open(key_file, 'rb'),
-            stdout=subprocess.DEVNULL, universal_newlines=True)
-    p.communicate()
-    if p.returncode != 0:
-        print("error: could not encrypt file", file=sys.stderr)
-        return 1
+    # Encrypt files using gpg
+    for filename in args.filename:
+        # Generate output name
+        encrypted_file_name = os.path.abspath(os.path.join(
+                args.output_dir, os.path.basename(filename) + args.extension))
 
-    # Print name of encrypted file to stdout
-    print(encrypted_file_name)
+        # Encrypt file
+        cmd = ['gpg', '--quiet', '--batch', '--symmetric',
+                '--cipher-algo', CIPHER_ALGORITHM,
+                '--passphrase-fd', '0',
+                '--output', encrypted_file_name,
+                filename]
+        key_file = os.path.join(args.config_dir, 'key')
+        p = subprocess.Popen(cmd, stdin=open(key_file, 'rb'),
+                stdout=subprocess.DEVNULL, universal_newlines=True)
+        p.communicate()
+
+        # Handle errors
+        if p.returncode != 0:
+            print("error: could not encrypt file '{}'".format(
+                    filename), file=sys.stderr)
+            return 1
+
+        # Print name of encrypted file to stdout
+        print(encrypted_file_name)
 
 
 def parse_arguments():
@@ -44,11 +51,11 @@ def parse_arguments():
     p.add_argument('-c', default=default_config, dest='config_dir',
             help='Path to configuration directory.')
     p.add_argument('-e', default=DEFAULT_ENCRYPTION_EXTENSION, dest='extension',
-            help='Extension for encrypted file.')
+            help='Extension for encrypted file(s).')
     p.add_argument('-o', default='.', dest='output_dir',
-            help='Directory where encrypted file will be stored.')
+            help='Directory where encrypted file(s) will be stored.')
     p.add_argument('filename', help='Name of file to encrypt.',
-            type=readable_file_arg)
+            type=readable_file_arg, nargs='+')
     return p.parse_args()
 
 
