@@ -24,7 +24,8 @@ def main():
         try:
             record = json.loads(line)
         except ValueError:
-            print("error: line {} does not contain valid JSON".format(i + 1),
+            print(("error: line {} does not contain a valid JSON record"
+                    .format(i + 1)),
                     file=sys.stderr)
         else:
             db.append(record)
