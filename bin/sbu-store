@@ -31,15 +31,6 @@ def main():
             aws_access_key_id=aws_credentials['default']['aws_access_key_id'],
             aws_secret_access_key=aws_credentials['default']['aws_secret_access_key'])
 
-    # Get vault information
-    vault_info = glacier.describe_vault(
-            vaultName=config['DEFAULT']['aws_vault_name'])
-
-    # If filename is None, just show vault information
-    if args.filename is None:
-        pprint.pprint(vault_info)
-        return 0
-
     # Upload archive
     archive = upload_archive(
             args.filename,
@@ -103,7 +94,7 @@ def parse_arguments():
             DEFAULT_CONFIG_DIR)
     p.add_argument('-c', default=default_config, dest='config_dir',
             help='Path to configuration directory.')
-    p.add_argument('filename', type=readable_file_arg, nargs='?',
+    p.add_argument('filename', type=readable_file_arg,
             help='File to upload for long-term storage.')
     return p.parse_args()
 
