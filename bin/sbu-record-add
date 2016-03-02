@@ -35,9 +35,6 @@ def main():
     with open(db_file, 'wt') as f:
         json.dump(db, f, indent=2, sort_keys=True)
 
-    # Print number of records currently in the database
-    print(len(db))
-
 
 def parse_arguments():
     p = argparse.ArgumentParser(
