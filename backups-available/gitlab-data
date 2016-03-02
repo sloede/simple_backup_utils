@@ -13,15 +13,9 @@ import time
 
 
 def main():
-    # Get backup directory
-    if len(sys.argv) > 1:
-        backup_dir = sys.argv[1]
-    else:
-        backup_dir = '.'
-
     # Get timestamp
-    if len(sys.argv) > 2:
-        timestamp = sys.argv[2]
+    if len(sys.argv) > 1:
+        timestamp = sys.argv[1]
     else:
         timestamp = time.strftime('%Y%m%d%H%M%S', time.gmtime())
 
@@ -51,10 +45,9 @@ def main():
               file=sys.stderr)
         return 1
 
-    # Move created backup to final backup directory and inform user
-    shutil.move(latest_backup, backup_dir)
-    print(os.path.abspath(
-            os.path.join(backup_dir, os.path.basename(latest_backup))))
+    # Move created backup to current directory
+    shutil.move(latest_backup, os.getcwd())
+    print(os.path.join(os.getcwd(), os.path.basename(latest_backup)))
 
 
 if __name__ == '__main__':

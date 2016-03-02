@@ -1,21 +1,14 @@
 #!/bin/bash
 
-# Get backup directory
-if [ -z "$1" ]; then
-  backup_dir=.
-else
-  backup_dir="$1"
-fi
-
 # Get timestamp
-if [ -z "$2" ]; then
+if [ -z "$1" ]; then
   timestamp=$(date -u "+%Y%m%d%H%M%S")
 else
-  timestamp="$2"
+  timestamp="$1"
 fi
 
 # Create backup
-filename="$backup_dir/etc_letsencrypt_${timestamp}.tar.bz2"
+filename="$(pwd)/etc_letsencrypt_${timestamp}.tar.bz2"
 tar cjf $filename -C / etc/letsencrypt
 
 # Handle errors and return filename upon success
