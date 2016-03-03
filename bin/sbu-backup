@@ -42,7 +42,7 @@ def main():
         encrypted = out.strip()
 
         # Upload encrypted file
-        cmd = [os.path.join(exec_path, 'sbu-store'), '-c', args.config_dir,
+        cmd = [os.path.join(exec_path, 'sbu-upload'), '-c', args.config_dir,
                 encrypted]
         p = subprocess.Popen(cmd, universal_newlines=True,
                 stdout=subprocess.PIPE)
