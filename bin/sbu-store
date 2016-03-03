@@ -23,7 +23,7 @@ def main():
     # Encrypt, upload, and store all specified files
     for f in args.filename:
         record = store_file(f, exec_path, args.config_dir)
-        if archive:
+        if record:
             print(record)
 
 
