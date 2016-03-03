@@ -27,8 +27,7 @@ def main():
     # Determine snapshot filename
     timestamp = time.strftime('%Y%m%d%H%M%S', time.gmtime())
     snapshot_name = 'sbu_snapshot_' + timestamp
-    snapshot_filename = os.path.join(
-            config['DEFAULT']['local_backup_dir'], snapshot_name + '.tar')
+    snapshot_filename = os.path.realpath(snapshot_name + '.tar')
 
     # Create temporary directory and create snapshot
     with tempfile.TemporaryDirectory() as temp_dir:
