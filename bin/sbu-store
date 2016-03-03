@@ -1,0 +1,93 @@
+#!/usr/bin/env python3
+
+DEFAULT_CONFIG_DIR = '.sbu'
+CONFIG_DIR_VAR = 'SBU_CONFIG_DIR'
+
+import argparse
+import configparser
+import json
+import os
+import subprocess
+import sys
+import tempfile
+
+def main():
+    # Parse command line arguments and read configuration file
+    args = parse_arguments()
+    config = configparser.ConfigParser()
+    config.read(os.path.join(args.config_dir, 'config'))
+
+    # Get path for sbu executables
+    exec_path = os.path.dirname(os.path.realpath(__file__))
+
+    # Encrypt, upload, and store all specified files
+    for f in args.filename:
+        record = store_file(f, exec_path, args.config_dir)
+        if archive:
+            print(record)
+
+
+def store_file(filename, exec_path, config_dir):
+    # Create temporary directory
+    with tempfile.TemporaryDirectory() as temp_dir:
+        # Encrypt file
+        cmd = [os.path.join(exec_path, 'sbu-encrypt'), '-c', config_dir,
+                os.path.realpath(filename)]
+        p = subprocess.Popen(cmd, universal_newlines=True,
+                stdout=subprocess.PIPE, cwd=temp_dir)
+        out, _ = p.communicate()
+        if p.returncode != 0:
+            print("error: could not encrypt snapshot file '{}'"
+                    .format(filename), file=sys.stderr)
+            return None
+        encrypted = out.strip()
+
+        # Upload encrypted file
+        cmd = [os.path.join(exec_path, 'sbu-upload'), '-c', config_dir,
+                encrypted]
+        p = subprocess.Popen(cmd, universal_newlines=True,
+                stdout=subprocess.PIPE)
+        out, _ = p.communicate()
+        if p.returncode != 0:
+            print("error: could not upload encrypted file '{}'"
+                    .format(encrypted), file=sys.stderr)
+            return None
+        record = out.strip()
+
+    # Add record
+    cmd = [os.path.join(exec_path, 'sbu-record-add'), '-c', config_dir]
+    p = subprocess.Popen(cmd, universal_newlines=True, stdout=subprocess.PIPE,
+            stdin=subprocess.PIPE)
+    out, _ = p.communicate(record)
+    if p.returncode != 0:
+        print("error: could not add record:\n{:s}".format(record),
+                file=sys.stderr)
+        return None
+
+    # Return record to show information to user
+    return record
+
+
+def parse_arguments():
+    p = argparse.ArgumentParser(
+            formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+    default_config = os.environ.get(CONFIG_DIR_VAR,
+            os.path.join(os.path.expanduser('~'), DEFAULT_CONFIG_DIR))
+    p.add_argument('-c', default=default_config, dest='config_dir',
+            help='Path to configuration directory.')
+    p.add_argument('filename', help='Name of file to store in vault.',
+            type=readable_file_arg, nargs='+')
+    return p.parse_args()
+
+
+def readable_file_arg(s):
+    try:
+        open(s, 'rb')
+    except:
+        raise argparse.ArgumentTypeError(
+                "'{}' is not a readable file".format(s))
+    return s
+
+
+if __name__ == '__main__':
+    sys.exit(main())
