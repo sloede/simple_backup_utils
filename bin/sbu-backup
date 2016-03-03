@@ -5,10 +5,10 @@ CONFIG_DIR_VAR = 'SBU_CONFIG_DIR'
 
 import argparse
 import configparser
+import json
 import os
 import subprocess
 import sys
-import tempfile
 
 def main():
     # Parse command line arguments and read configuration file
@@ -21,46 +21,26 @@ def main():
 
     # Create snapshot
     cmd = [os.path.join(exec_path, 'sbu-snapshot'), '-c', args.config_dir]
-    p = subprocess.Popen(cmd, universal_newlines=True, stdout=subprocess.PIPE)
+    p = subprocess.Popen(cmd, universal_newlines=True, stdout=subprocess.PIPE,
+            cwd=config['DEFAULT']['local_backup_dir'])
     out, _ = p.communicate()
     if p.returncode != 0:
         print('error: could not create snapshot', file=sys.stderr)
         return 1
     snapshot = out.strip()
 
-    # Create temporary directory
-    with tempfile.TemporaryDirectory() as temp_dir:
-        # Encrypt snapshot
-        cmd = [os.path.join(exec_path, 'sbu-encrypt'), '-c', args.config_dir,
-                snapshot]
-        p = subprocess.Popen(cmd, universal_newlines=True,
-                stdout=subprocess.PIPE, cwd=temp_dir)
-        out, _ = p.communicate()
-        if p.returncode != 0:
-            print('error: could not encrypt snapshot', file=sys.stderr)
-            return 1
-        encrypted = out.strip()
-
-        # Upload encrypted file
-        cmd = [os.path.join(exec_path, 'sbu-upload'), '-c', args.config_dir,
-                encrypted]
-        p = subprocess.Popen(cmd, universal_newlines=True,
-                stdout=subprocess.PIPE)
-        out, _ = p.communicate()
-        if p.returncode != 0:
-            print('error: could not upload encrypted snapshot', file=sys.stderr)
-            return 1
-        record = out.strip()
-
-    # Add record
-    cmd = [os.path.join(exec_path, 'sbu-record-add'), '-c', args.config_dir]
-    p = subprocess.Popen(cmd, universal_newlines=True, stdout=subprocess.PIPE,
-            stdin=subprocess.PIPE)
-    out, _ = p.communicate(record)
+    # Store snapshot
+    cmd = [os.path.join(exec_path, 'sbu-store'), '-c', args.config_dir,
+            snapshot]
+    p = subprocess.Popen(cmd, universal_newlines=True, stdout=subprocess.PIPE)
+    out, _ = p.communicate()
     if p.returncode != 0:
-        print("error: could not add record:\n{:s}".format(record),
-                file=sys.stderr)
+        print('error: could not store snapshot', file=sys.stderr)
         return 1
+    record = out.strip()
+
+    # Pretty-print upon success for user convenience
+    print(json.dumps(json.loads(record), indent=2, sort_keys=True))
 
 
 def parse_arguments():
