@@ -28,6 +28,7 @@ def main():
     # Create boto3 client for AWS Glacier
     glacier = boto3.client(
             'glacier',
+            region_name=aws_credentials['default']['region'],
             aws_access_key_id=aws_credentials['default']['aws_access_key_id'],
             aws_secret_access_key=aws_credentials['default']['aws_secret_access_key'])
 
@@ -38,7 +39,8 @@ def main():
                 glacier)
 
         # Print archive information
-        print(json.dumps(archive, sort_keys=True))
+        if archive:
+            print(json.dumps(archive, sort_keys=True))
 
 
 def upload_archive(filename, vault, glacier_client,
