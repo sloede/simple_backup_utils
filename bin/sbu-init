@@ -4,8 +4,23 @@ CONFIG_DIR=$HOME/.sbu
 ENCRYPTION_KEY_LENGTH=128
 DEFAULT_BACKUP_USER=$USER
 DEFAULT_LOCAL_BACKUP_DIR=backups
+DEFAULT_NUM_DAYS_LOCAL_BACKUPS=10
+DEFAULT_NUM_DAYS_REMOTE_BACKUPS=100
 DEFAULT_BACKUP_SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && cd .. && pwd )/backups-enabled"
 DEFAULT_AWS_CREDENTIALS_FILE=$HOME/.aws/credentials
+
+
+# Auxiliary method to check for integers
+is_integer() {
+  if [ $# -lt 1 ]; then
+    return 1
+  fi
+  case ${1#[-+]} in
+    '' | *[!0-9]*) return 1 ;;
+    *)             return 0 ;;
+  esac
+  return 0
+}
 
 ################################################################################
 # Backup user
@@ -55,6 +70,40 @@ if [ ! -d "$backup_script_dir" ]; then
 fi
 
 ################################################################################
+# Number of days for which to keep local backups
+################################################################################
+echo -n "Number of days for which to keep local backups [$DEFAULT_NUM_DAYS_LOCAL_BACKUPS]: "
+read num_days_local_backups
+if [ -z "$num_days_local_backups" ]; then
+  num_days_local_backups=$DEFAULT_NUM_DAYS_LOCAL_BACKUPS
+fi
+if ! is_integer $num_days_local_backups; then
+  echo "error: must be a non-negative integer" >&2
+  exit 1
+fi
+if [ "$num_days_local_backups" -lt 0 ]; then
+  echo "error: must be a non-negative integer" >&2
+  exit 1
+fi
+
+################################################################################
+# Number of days for which to keep remote backups
+################################################################################
+echo -n "Number of days for which to keep remote backups [$DEFAULT_NUM_DAYS_REMOTE_BACKUPS]: "
+read num_days_remote_backups
+if [ -z "$num_days_remote_backups" ]; then
+  num_days_remote_backups=$DEFAULT_NUM_DAYS_REMOTE_BACKUPS
+fi
+if ! is_integer $num_days_remote_backups; then
+  echo "error: must be a non-negative integer" >&2
+  exit 1
+fi
+if [ "$num_days_remote_backups" -lt 0 ]; then
+  echo "error: must be a non-negative integer" >&2
+  exit 1
+fi
+
+################################################################################
 # AWS credentials file
 ################################################################################
 echo -n "Path to AWS credentials file [$DEFAULT_AWS_CREDENTIALS_FILE]: "
@@ -96,6 +145,8 @@ cat << EOF > $CONFIG_DIR/config
 backup_user = $backup_user
 local_backup_dir = $local_backup_dir
 backup_script_dir = $backup_script_dir
+num_days_local_backups = $num_days_local_backups
+num_days_remote_backups = $num_days_remote_backups
 aws_credentials_file = $aws_credentials_file
 aws_vault_name = $aws_vault_name
 EOF
