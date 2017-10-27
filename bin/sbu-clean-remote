@@ -1,0 +1,91 @@
+#!/usr/bin/env python3
+
+DEFAULT_CONFIG_DIR = '.sbu'
+CONFIG_DIR_VAR = 'SBU_CONFIG_DIR'
+
+import argparse
+import calendar
+import configparser
+import json
+import os
+import re
+import sys
+import time
+
+def main():
+    # Parse command line arguments and read configuration file
+    args = parse_arguments()
+    config = configparser.ConfigParser()
+    config.read(os.path.join(args.config_dir, 'config'))
+
+    # Show default and quit
+    if args.show_default:
+        print(config['DEFAULT']['num_days_remote_backups'])
+        return 0
+
+    # Read current database
+    db_file = os.path.join(args.config_dir, 'backups.json')
+    with open(db_file, 'rt') as f:
+        db_input = json.load(f)
+
+    # Filter for files which exceed the retention time
+    num_days = (args.num_days if args.num_days
+            else int(config['DEFAULT']['num_days_remote_backups']))
+    limit = time.time() - num_days * 24 * 3600
+    db = [r for r in db_input if r['timestamp'] < limit]
+
+    # Print records if dry-run is requested and quit
+    if args.dry_run:
+        for r in db:
+            print(json.dumps(r))
+        return 0
+
+    # Read AWS credentials file
+    aws_credentials = configparser.ConfigParser()
+    aws_credentials.read(config['DEFAULT']['aws_credentials_file'])
+
+    # Create boto3 client for AWS Glacier
+    glacier = boto3.client(
+            'glacier',
+            region_name=aws_credentials['default']['region'],
+            aws_access_key_id=aws_credentials['default']['aws_access_key_id'],
+            aws_secret_access_key=aws_credentials['default']['aws_secret_access_key'])
+
+    # Delete all archives that exceed retention time
+    for r in db:
+        glacier.delete_archive(
+                vaultName=config['DEFAULT']['aws_vault_name'],
+                archiveId=r['archive_id'])
+
+
+def parse_arguments():
+    p = argparse.ArgumentParser(
+            formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+    default_config = os.environ.get(CONFIG_DIR_VAR,
+            os.path.join(os.path.expanduser('~'), DEFAULT_CONFIG_DIR))
+    p.add_argument('-c', default=default_config, dest='config_dir',
+            help='Path to configuration directory.')
+    p.add_argument('--num-days', '-n', type=is_nonnegative_integer_arg,
+            help=('Number of days for which to keep remote backups. '
+                  'If unspecified, use the value from the config file.'))
+    p.add_argument('--show-default', action='store_true',
+            help='Show the config value that will be used as default for "-n".')
+    p.add_argument('--dry-run', action='store_true',
+            help='Show files that exceed time limit but do not delete them.')
+    return p.parse_args()
+
+
+def is_nonnegative_integer_arg(s):
+    try:
+        int(s)
+    except:
+        raise argparse.ArgumentTypeError(
+                "'{}' is not an integer".format(s))
+    if int(s) < 0:
+        raise argparse.ArgumentTypeError(
+                "'{}' is not an non-negative integer".format(s))
+    return int(s)
+
+
+if __name__ == '__main__':
+    sys.exit(main())

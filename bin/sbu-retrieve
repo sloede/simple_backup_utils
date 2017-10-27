@@ -1,0 +1,67 @@
+#!/usr/bin/env python3
+
+DEFAULT_CONFIG_DIR = '.sbu'
+CONFIG_DIR_VAR = 'SBU_CONFIG_DIR'
+
+import argparse
+import binascii
+import boto3
+import configparser
+import hashlib
+import json
+import os
+import pprint
+import sys
+import time
+
+
+def main():
+    # Parse command line arguments and read configuration file
+    args = parse_arguments()
+    config = configparser.ConfigParser()
+    config.read(os.path.join(args.config_dir, 'config'))
+
+    # Read AWS credentials file
+    aws_credentials = configparser.ConfigParser()
+    aws_credentials.read(config['DEFAULT']['aws_credentials_file'])
+
+    # Create boto3 client for AWS Glacier
+    glacier = boto3.client(
+            'glacier',
+            aws_access_key_id=aws_credentials['default']['aws_access_key_id'],
+            aws_secret_access_key=aws_credentials['default']['aws_secret_access_key'])
+
+    # Initiate retrieval for all specified archives
+    job_ids = []
+    for archive_id in args.archive_id:
+        job_id = initiate_retrieval(
+                archive_id,
+                config['DEFAULT']['aws_vault_name'],
+                glacier)
+        job_ids.append(job_id)
+
+    # Regularly check if archives are ready for retrieval
+
+
+def initiate_retrieval(archive_id, vault, glacier_client):
+    job_info = glacier_client.initiate_job(
+            vaultName=vault,
+            jobParameters={'Type': 'archive-retrieval', 'ArchiveId': archive_id}
+            )
+    return job_info['jobId']
+
+
+def parse_arguments():
+    p = argparse.ArgumentParser(
+            formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+    default_config = os.environ.get(CONFIG_DIR_VAR,
+            os.path.join(os.path.expanduser('~'), DEFAULT_CONFIG_DIR))
+    p.add_argument('-c', default=default_config, dest='config_dir',
+            help='Path to configuration directory.')
+    p.add_argument('archive_id', nargs='+',
+            help='Archive id of file to retrieve.')
+    return p.parse_args()
+
+
+if __name__ == '__main__':
+    sys.exit(main())

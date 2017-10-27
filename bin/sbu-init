@@ -128,6 +128,17 @@ while true; do
 done
 
 ################################################################################
+# AWS credentials file
+################################################################################
+while true; do
+  echo -n "AWS glacier vault name: "
+  read aws_vault_name
+  if [ -n "$aws_vault_name" ]; then
+    break
+  fi
+done
+
+################################################################################
 # Create configuration files
 ################################################################################
 # Create folder for configuration files

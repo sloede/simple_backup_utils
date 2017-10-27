@@ -7,6 +7,7 @@ UPLOAD_PART_SIZE_MB = 8
 import argparse
 import binascii
 import boto3
+import botocore
 import configparser
 import hashlib
 import json
@@ -34,9 +35,29 @@ def main():
 
     # Upload all files found on command line
     for filename in args.filename:
-        # Upload archive
-        archive = upload_archive(filename, config['DEFAULT']['aws_vault_name'],
-                glacier)
+        # Try multiple times in case of request timeout
+        for i in range(args.max_attempts):
+            try:
+                # Try to upload archive
+                archive = upload_archive(
+                        filename,
+                        config['DEFAULT']['aws_vault_name'],
+                        glacier)
+            except botocore.exceptions.ClientError as e:
+                # Only continue trying to upload in case of a timeout exception
+                if e.response['Error']['Code'] != 'RequestTimeoutException':
+                    print(("error: an unrecoverable problem occurred when"
+                           " uploading file: {}").format(e.response['Error']['Message']),
+                            file=sys.stderr)
+                    return 1
+            else:
+                # If no error occurred, finish uploading this file
+                print("uploaded on attempt {}".format(i+1), file=sys.stderr)
+                break
+        else:
+            print("error: request timed out maximum allowed number of times ({})"
+                    .format(args.max_attempts), file=sys.stderr)
+            return 1
 
         # Print archive information
         if archive:
@@ -96,6 +117,8 @@ def parse_arguments():
             os.path.join(os.path.expanduser('~'), DEFAULT_CONFIG_DIR))
     p.add_argument('-c', default=default_config, dest='config_dir',
             help='Path to configuration directory.')
+    p.add_argument('--max-attempts', '-m', default=3,
+            help='Total number of attempts in case of a request timeout.')
     p.add_argument('filename', type=readable_file_arg, nargs='+',
             help='File to upload for long-term storage.')
     return p.parse_args()
